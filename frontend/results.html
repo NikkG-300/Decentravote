@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Election Results</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Election Results</h1>
+            <button onclick="goBack()">Back</button>
+        </div>
+
+        <div class="form-card">
+            <h2 id="election-title"></h2>
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'http://localhost:3000/api';
+        const user = JSON.parse(localStorage.getItem('user'));
+        const params = new URLSearchParams(window.location.search);
+        const electionId = params.get('id');
+
+        if (!user) {
+            window.location.href = 'index.html';
+        }
+
+        function goBack() {
+            if (user.role === 'admin') {
+                window.location.href = 'admin.html';
+            } else {
+                window.location.href = 'voter.html';
+            }
+        }
+
+        async function loadResults() {
+            const electionRes = await fetch(`${API}/elections`);
+            const elections = await electionRes.json();
+            const election = elections.find(e => e.id == electionId);
+            
+            document.getElementById('election-title').textContent = election.title;
+            
+            const res = await fetch(`${API}/elections/${electionId}/results`);
+            const results = await res.json();
+            
+            const container = document.getElementById('results');
+            container.innerHTML = '';
+            
+            const total = results.reduce((sum, r) => sum + r.votes, 0);
+            
+            results.sort((a, b) => b.votes - a.votes);
+            
+            results.forEach((r, i) => {
+                const percent = total > 0 ? ((r.votes / total) * 100).toFixed(1) : 0;
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                div.innerHTML = `
+                    <div class="result-name">${i === 0 ? '🏆 ' : ''}${r.name}</div>
+                    <div class="result-bar">
+                        <div class="result-fill" style="width: ${percent}%"></div>
+                    </div>
+                    <div class="result-votes">${r.votes} votes (${percent}%)</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        loadResults();
+        setInterval(loadResults, 5000);
+    </script>
+</body>
+</html>

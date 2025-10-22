@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Admin Dashboard</h1>
+            <button onclick="logout()">Logout</button>
+        </div>
+
+        <div class="form-card">
+            <h2>Create Election</h2>
+            <form id="electionForm">
+                <input type="text" id="title" placeholder="Election Title" required>
+                <textarea id="description" placeholder="Description"></textarea>
+                <button type="submit">Create Election</button>
+            </form>
+        </div>
+
+        <div class="form-card">
+            <h2>Add Candidate</h2>
+            <form id="candidateForm">
+                <select id="election_select" required>
+                    <option value="">Select Election</option>
+                </select>
+                <input type="text" id="candidate_name" placeholder="Candidate Name" required>
+                <textarea id="candidate_desc" placeholder="Description"></textarea>
+                <button type="submit">Add Candidate</button>
+            </form>
+        </div>
+
+        <div class="form-card">
+            <h2>Elections</h2>
+            <div id="elections"></div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'http://localhost:3000/api';
+        const user = JSON.parse(localStorage.getItem('user'));
+
+        if (!user || user.role !== 'admin') {
+            window.location.href = 'index.html';
+        }
+
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        }
+
+        async function loadElections() {
+            const res = await fetch(`${API}/elections`);
+            const elections = await res.json();
+            
+            const select = document.getElementById('election_select');
+            const list = document.getElementById('elections');
+            
+            select.innerHTML = '<option value="">Select Election</option>';
+            list.innerHTML = '';
+            
+            elections.forEach(e => {
+                const opt = document.createElement('option');
+                opt.value = e.id;
+                opt.textContent = e.title;
+                select.appendChild(opt);
+                
+                const div = document.createElement('div');
+                div.className = 'election-item';
+                div.innerHTML = `
+                    <h3>${e.title}</h3>
+                    <p>${e.description || ''}</p>
+                    <p>Status: ${e.status}</p>
+                    <a href="results.html?id=${e.id}">View Results</a>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        document.getElementById('electionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            
+            await fetch(`${API}/elections`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, description, created_by: user.id })
+            });
+            
+            alert('Election created!');
+            document.getElementById('electionForm').reset();
+            loadElections();
+        });
+
+        document.getElementById('candidateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const election_id = document.getElementById('election_select').value;
+            const name = document.getElementById('candidate_name').value;
+            const description = document.getElementById('candidate_desc').value;
+            
+            await fetch(`${API}/candidates`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ election_id, name, description })
+            });
+            
+            alert('Candidate added!');
+            document.getElementById('candidateForm').reset();
+        });
+
+        loadElections();
+    </script>
+</body>
+</html>
